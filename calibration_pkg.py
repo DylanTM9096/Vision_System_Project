@@ -57,9 +57,10 @@ def extract_frames(frame_dir = "images", rotate_90_ccw = False, frame_interval =
     cap.release()
     print(f"Done! Saved {saved_count - 1} frames.")
 
-def get_calibration(calibration_dir = "calibration_images", CHECKERBOARD = (10,7), image_directory = './images'):
+def get_calibration(calibration_dir = "calibration_images", CHECKERBOARD = (10,7), image_directory = './images', square_size=25):
     # Create directory to store calibration images
     create_directory(calibration_dir)
+    print(f"Calibrating with extracted frames...")
 
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
@@ -71,7 +72,7 @@ def get_calibration(calibration_dir = "calibration_images", CHECKERBOARD = (10,7
     # Defining the world coordinates for 3D points
     objp = np.zeros((1, CHECKERBOARD[0]*CHECKERBOARD[1], 3), np.float32)
     objp[0,:,:2] = np.mgrid[0:CHECKERBOARD[0], 0:CHECKERBOARD[1]].T.reshape(-1, 2)
-    prev_img_shape = None
+    objp *= square_size
 
     saved_count = 0
 
@@ -99,6 +100,8 @@ def get_calibration(calibration_dir = "calibration_images", CHECKERBOARD = (10,7
 
             # Draw and display the corners
             img = cv2.drawChessboardCorners(img, CHECKERBOARD, corners2,ret)
+            # This draws a small red circle on the very first corner detected
+            cv2.circle(img, (int(corners2[0][0][0]), int(corners2[0][0][1])), 10, (0, 0, 255), -1)
         
         file_path = os.path.join(calibration_dir, f"calibration_image_{saved_count}.jpg")
         cv2.imwrite(file_path, img)
@@ -116,15 +119,39 @@ def get_calibration(calibration_dir = "calibration_images", CHECKERBOARD = (10,7
     """
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
 
-    print("Camera matrix : \n")
-    print(mtx)
-    print("dist : \n")
-    print(dist)
-    print("rvecs : \n")
-    print(rvecs)
-    print("tvecs : \n")
-    print(tvecs)
+    return mtx, dist, objp
+
+def get_world_coords(image_path, mtx, dist, objp, CHECKERBOARD=(10, 7)):
+    """ Uses solvePnP to find the rotation and translation of a specific image """
+    img = cv2.imread(image_path)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+    ret, corners = cv2.findChessboardCorners(gray, CHECKERBOARD, None)
+    
+    if ret:
+        # solvePnP finds the pose of the object (world) relative to the camera
+        success, rvec, tvec = cv2.solvePnP(objp, corners, mtx, dist)
+        
+        if success:
+            print(f"\nResults for {image_path}:")
+            print("Rotation Vector (rvec):\n", rvec)
+            print("Translation Vector (tvec - distance from camera):\n", tvec)
+            
+            # Convert rotation vector to matrix for coordinate math
+            rmat, _ = cv2.Rodrigues(rvec)
+            
+            # The position of the camera in world coordinates
+            cam_pos = -np.matrix(rmat).T * np.matrix(tvec)
+            print("Camera Position in World Coords:\n", cam_pos)
+            return rvec, tvec
+    
+    print(f"Could not find checkerboard in {image_path}")
+    return None, None
 
 if __name__ == "__main__":
+    # Extract calibration images from video
     extract_frames(frame_dir = "images", rotate_90_ccw = False, frame_interval = 40, video_name = "VID_20260323_131653.mp4")
-    get_calibration(calibration_dir = "calibration_images", CHECKERBOARD = (10,7), image_directory = './images')
+    # Get camera intrinsics (matrix and distortion)
+    mtx, dist, objp_template = get_calibration(calibration_dir = "calibration_images", CHECKERBOARD = (10,7), image_directory = './images')
+    # Use solvePnP on a specific frame to get extrinsics (world coords)
+    get_world_coords("images/image_0.jpg", mtx, dist, objp_template)
