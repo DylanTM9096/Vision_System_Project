@@ -121,32 +121,40 @@ def get_calibration(calibration_dir = "calibration_images", CHECKERBOARD = (10,7
 
     return mtx, dist, objp
 
-def get_world_coords(image_path, mtx, dist, objp, CHECKERBOARD=(10, 7)):
+def get_world_coords(mtx, dist, objp, CHECKERBOARD=(10, 7), image_directory = './images'):
     """ Uses solvePnP to find the rotation and translation of a specific image """
-    img = cv2.imread(image_path)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     
-    ret, corners = cv2.findChessboardCorners(gray, CHECKERBOARD, None)
-    
-    if ret:
-        # solvePnP finds the pose of the object (world) relative to the camera
-        success, rvec, tvec = cv2.solvePnP(objp, corners, mtx, dist)
+    # Extracting path of individual image stored in a given directory
+    images = glob.glob(f'{image_directory}/*.jpg')
+
+    world_coords = []
+
+    for img_name in images:
+        img = cv2.imread(img_name)
+        assert img is not None, "Image not found!"
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
-        if success:
-            print(f"\nResults for {image_path}:")
-            print("Rotation Vector (rvec):\n", rvec)
-            print("Translation Vector (tvec - distance from camera):\n", tvec)
+        ret, corners = cv2.findChessboardCorners(gray, CHECKERBOARD, None)
+        
+        if ret:
+            # solvePnP finds the pose of the object (world) relative to the camera
+            success, rvec, tvec = cv2.solvePnP(objp, corners, mtx, dist)
             
-            # Convert rotation vector to matrix for coordinate math
-            rmat, _ = cv2.Rodrigues(rvec)
-            
-            # The position of the camera in world coordinates
-            cam_pos = -np.matrix(rmat).T * np.matrix(tvec)
-            print("Camera Position in World Coords:\n", cam_pos)
-            return rvec, tvec
-    
-    print(f"Could not find checkerboard in {image_path}")
-    return None, None
+            if success:
+                print(f"\nResults for {img_name}:")
+                print("Rotation Vector (rvec):\n", rvec)
+                print("Translation Vector (tvec - distance from camera):\n", tvec)
+                
+                # Convert rotation vector to matrix for coordinate math
+                rmat, _ = cv2.Rodrigues(rvec)
+                
+                # The position of the camera in world coordinates
+                cam_pos = -np.matrix(rmat).T * np.matrix(tvec)
+                print("Camera Position in World Coords:\n", cam_pos)
+                world_coords.append(cam_pos)
+        else:
+            print(f"Could not find checkerboard in {image_directory}/{img_name}")
+    return world_coords
 
 if __name__ == "__main__":
     # Extract calibration images from video
@@ -154,4 +162,4 @@ if __name__ == "__main__":
     # Get camera intrinsics (matrix and distortion)
     mtx, dist, objp_template = get_calibration(calibration_dir = "calibration_images", CHECKERBOARD = (10,7), image_directory = './images')
     # Use solvePnP on a specific frame to get extrinsics (world coords)
-    get_world_coords("images/image_0.jpg", mtx, dist, objp_template)
+    get_world_coords(mtx, dist, objp_template, image_directory = './images')
