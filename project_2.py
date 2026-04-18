@@ -476,20 +476,21 @@ def track_object_pose_sift(video_name, reference_image, real_width_mm, real_heig
     return fps
 
 
-
+  
 if __name__ == "__main__":
     frame_interval = 40
 
     # Extract calibration images from video
-    fps, video_frames = extract_frames(video_name = "Video.mp4")
+    fps, video_frames = extract_frames(video_name = "mario_vid.mp4")
 
     # Get camera intrinsics (matrix and distortion) and solve for world coordinates
-    get_calibration(frame_interval = frame_interval, image_list = video_frames, checkerboard_dim = (10,7), square_size = 25, calibration_dir = "calibration_images")
+    get_calibration(frame_interval = frame_interval, image_list = video_frames, checkerboard_dim = (9,6), square_size = 25, calibration_dir = "calibration_images")
 
     # Make a video from the images in a directory
     create_video(frame_rate = fps, calibration_dir = "calibration_images", video_name = "constructed_video.mp4")
 
     # runs the object position tracking code
-    fps = track_object_pose_sift( video_name="book.mp4", reference_image="reference.jpg", real_width_mm=127, real_height_mm=191, output_dir="pose_output", calib_dir=".")
-# creats the video from the saved frames
+    fps = track_object_pose_sift( video_name="mario_vid.mp4", reference_image="mario.png", real_width_mm=127, real_height_mm=191, output_dir="pose_output", calib_dir=".")
+    
+    # creats the video from the saved frames
     create_video(frame_rate=fps, calibration_dir="pose_output", video_name="pose_output.mp4")
