@@ -1,0 +1,9 @@
+/calibration_images
+
+camera_matrix.txt
+distortion_coefficients.txt
+
+/.venv
+/plots
+/plots_pose
+/pose_output
