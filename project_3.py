@@ -310,10 +310,6 @@ def get_calibration(image_list, checkerboard_dim, square_size, frame_interval = 
             if not success:
                 continue
 
-            # print(f"\nResults for frame_{i}.jpg")
-            # print("Rotation Vector (rvec):\n", rvec)
-            # print("Translation Vector (tvec):\n", tvec)
-
             # Convert rotation vector to matrix for coordinate math
             rmat, _ = cv2.Rodrigues(rvec)
 
@@ -351,14 +347,16 @@ def get_calibration(image_list, checkerboard_dim, square_size, frame_interval = 
     
 def track_object_pose_sift(video_name, reference_image, real_width_mm, real_height_mm, output_dir="pose_output", calib_dir="."):
 
-    # Tracks a planar object using SIFT + solvePnP.
+    """
+    Tracks a planar object using SIFT + solvePnP.
 
-    # Parameters:
-    #     video_name: input video
-    #     reference_image: image of known planar object
-    #     real_width_mm: real width of object
-    #     real_height_mm: real height of object
-
+    Parameters:
+        video_name: input video
+        reference_image: image of known planar object
+        real_width_mm: real width of object
+        real_height_mm: real height of object
+     
+    """
 
     # Load calibration and distortion
     mtx = np.loadtxt(os.path.join(calib_dir, "camera_matrix.txt"), delimiter=",")
@@ -701,8 +699,6 @@ def calib_n_track(image_list, checkerboard_dim, square_size,
             cv2.imwrite(os.path.join(calibration_dir, f"frame_{i:04d}.jpg"), img)
 
 
-
-        
         print("Intrinsics saved to 'camera_matrix.txt' and 'distortion_coefficients.txt'")
 
         plot_dir="plots"
