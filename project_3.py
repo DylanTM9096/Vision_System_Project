@@ -154,7 +154,7 @@ def create_video(frame_rate = 30, calibration_dir = "calibration_images", video_
     # Return success status
     return True
 
-def plot_camera_movement(data, plot_dir, plot_name, legend_1, legend_2, legend_3):
+def plot_camera_movement(data, plot_dir, plot_name, legend_1, legend_2, legend_3, Title = "Plot"):
     """
     Plots the X, Y, and Z translation of the camera over a sequence of frames.
 
@@ -183,7 +183,7 @@ def plot_camera_movement(data, plot_dir, plot_name, legend_1, legend_2, legend_3
     # Plot Z positions over frames in red with the given label
     plt.plot(frames, positions[:, 2], label=legend_3, color='red')
 
-    plt.title("Camera Position per Calibration Frame")
+    plt.title(Title)
     plt.xlabel("Frame Number")
     plt.ylabel("Distance (mm)")
     plt.legend()
@@ -322,13 +322,23 @@ def calib_n_track(image_list, checkerboard_dim, square_size,
     flann = cv2.FlannBasedMatcher(index_params, search_params)
 
     # 3D object center
+    # objp_obj = np.array([
+    #     [-real_width_mm, -real_height_mm, 0],
+    #     [ real_width_mm, -real_height_mm, 0],
+    #     [ real_width_mm,  real_height_mm, 0],
+    #     [-real_width_mm,  real_height_mm, 0]
+    # ], dtype=np.float32)
+    
     objp_obj = np.array([
-        [-real_width_mm, -real_height_mm, 0],
-        [ real_width_mm, -real_height_mm, 0],
-        [ real_width_mm,  real_height_mm, 0],
-        [-real_width_mm,  real_height_mm, 0]
+        [0, 0, 0],                          # bottom-left corner (origin)
+        [real_width_mm, 0, 0],              # bottom-right
+        [real_width_mm, real_height_mm, 0], # top-right
+        [0, real_height_mm, 0]              # top-left
     ], dtype=np.float32)
     
+    
+    checkerboard_history = []
+    object_history = []
 
     world_coords = []
     rvec_history = []
@@ -425,6 +435,8 @@ def calib_n_track(image_list, checkerboard_dim, square_size,
             X, Y, Z = T_world_obj[:3,3]
             
             
+            checkerboard_history.append(chec_tvec.flatten())
+            object_history.append([X, Y, Z])
             
             
             #Text (sift pos) 
@@ -466,7 +478,18 @@ def calib_n_track(image_list, checkerboard_dim, square_size,
 
         plot_dir="plots"
         create_directory(plot_dir)
-        plot_camera_movement(tvec_history, plot_dir=plot_dir, plot_name="camera_translation_plot.jpg", legend_1 = "X", legend_2 = "Y", legend_3 = "Z")
+        plot_camera_movement(tvec_history, plot_dir=plot_dir, plot_name="camera_translation_plot.jpg", legend_1 = "X", legend_2 = "Y", legend_3 = "Z", Title="Camera Position per Calibration Frame")
+        plot_camera_movement(object_history, plot_dir=plot_dir, plot_name="object_pos_plot.jpg", legend_1 = "X", legend_2 = "Y", legend_3 = "Z", Title="Position of Object Relative to Checkerboard")
+
+        if len(object_history) > 0: #print out overall average position for comparison with real physical diementions
+            obj_arr = np.array(object_history)
+
+            avg_x = np.mean(obj_arr[:, 0])
+            avg_y = np.mean(obj_arr[:, 1])
+            avg_z = np.mean(obj_arr[:, 2])
+
+            print(f"Average Object Position (mm): X={avg_x:.2f}, Y={avg_y:.2f}, Z={avg_z:.2f}")
+
 
         return True, mtx, dist
     else:
@@ -480,11 +503,10 @@ if __name__ == "__main__":
     frame_interval = 40
 
     # Extract calibration images from video
-    fps, video_frames = extract_frames(video_name = "IMG_3522.MOV")
+    fps, video_frames = extract_frames(video_name = "video4.MOV")
 
-    calib_n_track(image_list = video_frames, checkerboard_dim = (9,6), square_size = 25, reference_image="mario.png", 
+    calib_n_track(image_list = video_frames, checkerboard_dim = (9,6), square_size = 23, reference_image="mario.png", 
                   real_width_mm=135, real_height_mm=190, frame_interval = frame_interval,calibration_dir = "calibration_images")
     
     # creats the video from the saved frames
     create_video(frame_rate = fps, calibration_dir = "calibration_images", video_name = "constructed_video.mp4")
-    # create_video(frame_rate=fps, calibration_dir="pose_output", video_name="pose_output.mp4")
