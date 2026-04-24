@@ -322,13 +322,6 @@ def calib_n_track(image_list, checkerboard_dim, square_size,
     flann = cv2.FlannBasedMatcher(index_params, search_params)
 
     # 3D object center
-    # objp_obj = np.array([
-    #     [-real_width_mm, -real_height_mm, 0],
-    #     [ real_width_mm, -real_height_mm, 0],
-    #     [ real_width_mm,  real_height_mm, 0],
-    #     [-real_width_mm,  real_height_mm, 0]
-    # ], dtype=np.float32)
-    
     objp_obj = np.array([
         [0, 0, 0],                          # bottom-left corner (origin)
         [real_width_mm, 0, 0],              # bottom-right
